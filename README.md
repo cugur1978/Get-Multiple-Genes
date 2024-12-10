@@ -1,10 +1,10 @@
-# Get-Multiple-Genes
+This code was collaboratively developed with ChatGPT-4.0 to analyze genomic data.
 
 GenBank Processing and Visualization Tool
 
 Overview
 
-This script is designed to process GenBank (.gbk) files and analyze CDS (Coding Sequence) information. The tool provides insights into the counts of CDSs, hypothetical proteins, and non-hypothetical genes in genomic data. Additionally, the script generates a stacked bar chart to visualize these counts, displaying the percentage contribution of hypothetical and non-hypothetical proteins for each genome.
+This script is designed to process GenBank (.gbk files obtained using Prokka) files and analyze CDS (Coding Sequence) information. The tool provides insights into the counts of CDSs, hypothetical proteins, and non-hypothetical genes in genomic data. Additionally, the script generates a stacked bar chart to visualize these counts, displaying the percentage contribution of hypothetical and non-hypothetical proteins for each genome.
 
 Features
 
