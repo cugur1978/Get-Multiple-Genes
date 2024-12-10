@@ -1,0 +1,159 @@
+import os
+import re
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def process_genbank_files_with_percentages(folder_path, output_file, visualization_file):
+    """
+    Processes GenBank (.gbk) files in a folder to calculate counts of CDSs, products,
+    genes, hypothetical proteins, and non-hypothetical genes. The results are saved 
+    in an Excel file and visualized as a stacked bar chart with percentages.
+    
+    Parameters:
+        folder_path (str): Path to the folder containing GenBank files.
+        output_file (str): Path to the output Excel file.
+        visualization_file (str): Path to the output SVG file for the visualization.
+    """
+    
+    def analyze_cds_details_batch(file_path):
+        """
+        Analyzes a single GenBank file to extract counts of CDS, products, genes, 
+        hypothetical proteins, and non-hypothetical genes.
+        
+        Parameters:
+            file_path (str): Path to the GenBank file.
+        
+        Returns:
+            dict: A dictionary containing counts for CDS, products, genes, hypothetical 
+                  proteins, and non-hypothetical genes.
+        """
+        try:
+            # Counters
+            cds_count = 0
+            product_count = 0
+            gene_count = 0
+            hypothetical_protein_count = 0
+            non_hypothetical_gene_count = 0  # Count of non-hypothetical genes
+
+            # State trackers
+            inside_translation = False  # Are we inside a /translation= block?
+            inside_cds = False  # Are we inside a CDS block?
+
+            # Read the file line by line
+            with open(file_path, 'r') as file:
+                for line in file:
+                    # Start of a /translation= block
+                    if line.strip().startswith('/translation="'):
+                        inside_translation = True
+
+                    # End of a /translation= block
+                    if inside_translation:
+                        if line.strip().endswith('"'):
+                            inside_translation = False
+                        continue  # Skip /translation block
+
+                    # If a tRNA or rRNA block is encountered, stop analyzing the CDS block
+                    if line.strip().startswith("tRNA") or line.strip().startswith("rRNA"):
+                        inside_cds = False
+
+                    # Detect the start of a CDS block
+                    if line.strip().startswith("CDS"):
+                        cds_count += 1
+                        inside_cds = True
+                        current_cds_has_product = False  # Reset for each CDS block
+                        continue
+
+                    # If inside a CDS block
+                    if inside_cds:
+                        # Check for "product=" and count it only once per CDS
+                        if not current_cds_has_product and re.search(r'product=', line, re.IGNORECASE):
+                            product_count += 1
+                            current_cds_has_product = True
+
+                            # Check for "hypothetical protein"
+                            if re.search(r'hypothetical protein', line, re.IGNORECASE):
+                                hypothetical_protein_count += 1
+                            else:
+                                non_hypothetical_gene_count += 1
+
+                        # Check for "gene=" and count it
+                        if re.search(r'gene=', line, re.IGNORECASE):
+                            gene_count += 1
+
+                        # End the CDS block if an empty line is encountered
+                        if line.strip() == "":
+                            inside_cds = False
+
+            return {
+                "CDS Count": cds_count,
+                "Product Count": product_count,
+                "Gene Count": gene_count,
+                "Hypothetical Protein Count": hypothetical_protein_count,
+                "Non-Hypothetical Gene Count": non_hypothetical_gene_count
+            }
+
+        except FileNotFoundError:
+            print(f"File not found: {file_path}")
+            return None
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return None
+
+    # List to store results
+    results = []
+
+    # Find all .gbk files in the folder
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".gbk"):
+            file_path = os.path.join(folder_path, filename)
+            result = analyze_cds_details_batch(file_path)
+            if result:
+                results.append({
+                    "Genome": filename,
+                    **result
+                })
+
+    # Convert results into a DataFrame
+    df = pd.DataFrame(results)
+
+    # Save results to an Excel file
+    df.to_excel(output_file, index=False)
+    print(f"Results saved to {output_file}")
+
+    # Visualization
+    plt.figure(figsize=(12, 8))
+    x = df["Genome"]
+    y1 = df["Hypothetical Protein Count"]
+    y2 = df["Non-Hypothetical Gene Count"]
+
+    # Create stacked bar chart
+    plt.bar(x, y1, label="Hypothetical Protein Count")
+    plt.bar(x, y2, bottom=y1, label="Non-Hypothetical Gene Count")
+
+    # Add percentages
+    for i in range(len(x)):
+        total = y1[i] + y2[i]
+        if total > 0:
+            plt.text(i, y1[i] / 2, f"{(y1[i] / total) * 100:.1f}%", ha='center', va='center', rotation=90, fontsize=8)
+            plt.text(i, y1[i] + (y2[i] / 2), f"{(y2[i] / total) * 100:.1f}%", ha='center', va='center', rotation=90, fontsize=8)
+
+    # Customize chart
+    plt.xlabel("Genomes")
+    plt.ylabel("CDS Count")
+    plt.title("CDS Count: Hypothetical vs Non-Hypothetical Proteins (with Percentages)")
+    plt.xticks(rotation=90)
+    plt.legend()
+
+    # Save the visualization as an SVG
+    plt.tight_layout()
+    plt.savefig(visualization_file, format='svg')
+    print(f"Visualization saved to {visualization_file}")
+    plt.close()
+
+# Example usage
+process_genbank_files_with_percentages(
+    folder_path="folder_path",
+    output_file="folder_path\gene_product_counts.xlsx",
+    visualization_file="folder_path\gene_product_counts.svg"
+)
+
