@@ -11,12 +11,19 @@ Features
 Batch Analysis of GenBank Files:
 
 Analyzes all .gbk files in a specified folder.
+
 Extracts the following details:
+
 Total CDS count.
+
 Number of products (/product=).
+
 Number of genes (/gene=).
+
 Hypothetical protein count (/product="hypothetical protein").
+
 Non-hypothetical gene count.
+
 Excel Output:
 
 Saves the analyzed data into an Excel file with organized columns:
